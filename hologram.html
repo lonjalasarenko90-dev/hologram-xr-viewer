@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>HOLOGRAM</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Share+Tech+Mono&display=swap');
+
+  :root {
+    --cyan: #00f5ff;
+    --cyan-dim: #00a8b5;
+    --blue: #0047ff;
+    --glow: 0 0 20px #00f5ff88, 0 0 60px #00f5ff33;
+    --bg: #000408;
+    --panel: #020d18;
+    --border: #00f5ff33;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--cyan);
+    font-family: 'Share Tech Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Scanlines overlay */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent,
+      transparent 2px,
+      rgba(0,245,255,0.02) 2px,
+      rgba(0,245,255,0.02) 4px
+    );
+    pointer-events: none;
+    z-index: 9999;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    padding: 18px 24px 12px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, #000d1a 0%, transparent 100%);
+  }
+
+  .logo {
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    font-size: 22px;
+    letter-spacing: 6px;
+    text-shadow: var(--glow);
+    animation: flicker 8s infinite;
+  }
+
+  .logo span { color: #ffffff88; font-weight: 400; font-size: 11px; letter-spacing: 3px; display: block; margin-top: 2px; }
+
+  @keyframes flicker {
+    0%,97%,100% { opacity: 1; }
+    98% { opacity: 0.4; }
+    99% { opacity: 1; }
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--cyan);
+    box-shadow: 0 0 12px var(--cyan);
+    animation: pulse 2s infinite;
+    margin-left: auto;
+  }
+
+  @keyframes pulse {
+    0%,100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.4; transform: scale(0.7); }
+  }
+
+  /* ── TABS ── */
+  .tabs {
+    display: flex;
+    padding: 16px 24px 0;
+    gap: 2px;
+  }
+
+  .tab {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    letter-spacing: 3px;
+    padding: 10px 20px;
+    border: 1px solid var(--border);
+    border-bottom: none;
+    background: transparent;
+    color: var(--cyan-dim);
+    cursor: pointer;
+    transition: all .25s;
+    clip-path: polygon(8px 0%, 100% 0%, calc(100% - 8px) 100%, 0% 100%);
+  }
+
+  .tab.active {
+    background: var(--cyan);
+    color: #000;
+    border-color: var(--cyan);
+    box-shadow: var(--glow);
+  }
+
+  .tab:hover:not(.active) {
+    color: var(--cyan);
+    border-color: var(--cyan);
+  }
+
+  /* ── PANEL ── */
+  .panel {
+    display: none;
+    padding: 24px;
+    border-top: 1px solid var(--border);
+  }
+
+  .panel.active { display: block; }
+
+  /* ── UPLOAD ZONE ── */
+  .upload-zone {
+    border: 1px dashed var(--cyan-dim);
+    border-radius: 2px;
+    padding: 32px 16px;
+    text-align: center;
+    cursor: pointer;
+    transition: all .3s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .upload-zone:hover, .upload-zone.drag {
+    border-color: var(--cyan);
+    background: rgba(0,245,255,0.04);
+    box-shadow: inset 0 0 30px rgba(0,245,255,0.05);
+  }
+
+  .upload-zone::after {
+    content: '';
+    position: absolute;
+    top: -100%;
+    left: 0; right: 0;
+    height: 40%;
+    background: linear-gradient(180deg, transparent, rgba(0,245,255,0.06), transparent);
+    animation: scan 4s linear infinite;
+  }
+
+  @keyframes scan {
+    to { top: 200%; }
+  }
+
+  .upload-icon {
+    font-size: 40px;
+    margin-bottom: 12px;
+    display: block;
+    filter: drop-shadow(0 0 8px var(--cyan));
+  }
+
+  .upload-text {
+    font-size: 13px;
+    color: var(--cyan-dim);
+    line-height: 1.7;
+  }
+
+  .upload-text strong { color: var(--cyan); }
+
+  #fileInput, #videoInput { display: none; }
+
+  /* ── CONTROLS ── */
+  .controls {
+    margin-top: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .ctrl-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .ctrl-label {
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--cyan-dim);
+    min-width: 90px;
+    text-transform: uppercase;
+  }
+
+  input[type=range] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 2px;
+    background: var(--border);
+    outline: none;
+    border-radius: 0;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    background: var(--cyan);
+    border-radius: 0;
+    box-shadow: 0 0 8px var(--cyan);
+    cursor: pointer;
+  }
+
+  .ctrl-val {
+    font-size: 11px;
+    min-width: 36px;
+    text-align: right;
+    color: var(--cyan);
+  }
+
+  /* ── BUTTONS ── */
+  .btn {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    letter-spacing: 3px;
+    padding: 12px 24px;
+    border: 1px solid var(--cyan);
+    background: transparent;
+    color: var(--cyan);
+    cursor: pointer;
+    transition: all .2s;
+    clip-path: polygon(10px 0%, 100% 0%, calc(100% - 10px) 100%, 0% 100%);
+    text-transform: uppercase;
+  }
+
+  .btn:hover {
+    background: var(--cyan);
+    color: #000;
+    box-shadow: var(--glow);
+  }
+
+  .btn:disabled {
+    opacity: 0.3;
+    cursor: not-allowed;
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    margin-top: 4px;
+    flex-wrap: wrap;
+  }
+
+  .btn-primary {
+    background: var(--cyan);
+    color: #000;
+    font-weight: 700;
+  }
+
+  /* ── PYRAMID CANVAS ── */
+  #pyramidCanvas {
+    display: none;
+    width: 100%;
+    border: 1px solid var(--border);
+    margin-top: 16px;
+    image-rendering: pixelated;
+  }
+
+  /* ── FULLSCREEN PYRAMID ── */
+  #fullscreenOverlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #000;
+    z-index: 1000;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+  }
+
+  #fullscreenOverlay.show { display: flex; }
+
+  #fsCanvas {
+    max-width: 100vw;
+    max-height: 100vh;
+  }
+
+  .fs-close {
+    position: fixed;
+    top: 20px; right: 20px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    letter-spacing: 3px;
+    padding: 8px 16px;
+    border: 1px solid var(--cyan);
+    background: rgba(0,0,0,0.8);
+    color: var(--cyan);
+    cursor: pointer;
+    z-index: 1001;
+  }
+
+  .fs-tip {
+    position: fixed;
+    bottom: 20px;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--cyan-dim);
+    text-align: center;
+    padding: 0 20px;
+  }
+
+  /* ── AR SECTION ── */
+  #arVideo {
+    width: 100%;
+    border-radius: 2px;
+    border: 1px solid var(--border);
+    display: none;
+  }
+
+  #arCanvas {
+    position: absolute;
+    top: 0; left: 0;
+    pointer-events: none;
+  }
+
+  .ar-container {
+    position: relative;
+    display: none;
+    margin-top: 16px;
+  }
+
+  .ar-container.show { display: block; }
+
+  .ar-info {
+    background: rgba(0,245,255,0.04);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--cyan);
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    font-size: 11px;
+    line-height: 1.8;
+    color: var(--cyan-dim);
+  }
+
+  .ar-info strong { color: var(--cyan); }
+
+  /* AR Effect selector */
+  .effect-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    margin: 16px 0;
+  }
+
+  .effect-btn {
+    font-family: 'Share Tech Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1px;
+    padding: 10px 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--cyan-dim);
+    cursor: pointer;
+    transition: all .2s;
+    text-align: center;
+  }
+
+  .effect-btn.active, .effect-btn:hover {
+    border-color: var(--cyan);
+    color: var(--cyan);
+    background: rgba(0,245,255,0.06);
+    box-shadow: 0 0 10px rgba(0,245,255,0.15);
+  }
+
+  /* ── SECTION TITLE ── */
+  .section-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    letter-spacing: 4px;
+    color: var(--cyan-dim);
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    text-transform: uppercase;
+  }
+
+  .section-title::before { content: '// '; color: var(--cyan); }
+
+  /* ── TIPS BOX ── */
+  .tip-box {
+    margin-top: 20px;
+    padding: 14px 16px;
+    border: 1px solid rgba(0,245,255,0.15);
+    background: rgba(0,245,255,0.02);
+    font-size: 10px;
+    line-height: 2;
+    color: #ffffff55;
+  }
+
+  .tip-box b { color: var(--cyan-dim); }
+
+  /* AR fullscreen */
+  #arFullscreen {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #000;
+    z-index: 1000;
+  }
+
+  #arFullscreen.show { display: block; }
+
+  #arFsVideo {
+    width: 100%; height: 100%;
+    object-fit: cover;
+  }
+
+  #arFsCanvas {
+    position: absolute;
+    inset: 0;
+    width: 100%; height: 100%;
+  }
+
+  .ar-fs-close {
+    position: fixed;
+    top: 16px; right: 16px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 10px;
+    letter-spacing: 2px;
+    padding: 8px 14px;
+    border: 1px solid var(--cyan);
+    background: rgba(0,0,0,0.7);
+    color: var(--cyan);
+    cursor: pointer;
+    z-index: 1001;
+  }
+
+  .ar-label {
+    position: fixed;
+    top: 16px; left: 16px;
+    font-family: 'Orbitron', sans-serif;
+    font-size: 9px;
+    letter-spacing: 3px;
+    color: var(--cyan);
+    text-shadow: var(--glow);
+    z-index: 1001;
+  }
+
+  /* corner decorations */
+  .corner-decor {
+    position: fixed;
+    width: 30px; height: 30px;
+    z-index: 1001;
+    pointer-events: none;
+  }
+
+  .corner-decor.tl { top: 14px; left: 14px; border-top: 1px solid var(--cyan); border-left: 1px solid var(--cyan); }
+  .corner-decor.tr { top: 14px; right: 14px; border-top: 1px solid var(--cyan); border-right: 1px solid var(--cyan); }
+  .corner-decor.bl { bottom: 14px; left: 14px; border-bottom: 1px solid var(--cyan); border-left: 1px solid var(--cyan); }
+  .corner-decor.br { bottom: 14px; right: 14px; border-bottom: 1px solid var(--cyan); border-right: 1px solid var(--cyan); }
+
+  /* progress */
+  .progress-bar {
+    height: 2px;
+    background: var(--border);
+    margin: 10px 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: var(--cyan);
+    box-shadow: 0 0 8px var(--cyan);
+    transition: width .3s;
+    width: 0%;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="logo">HOLOGRAM<span>PROJECTION SYSTEM v2.0</span></div>
+  <div class="status-dot"></div>
+</div>
+
+<div class="tabs">
+  <button class="tab active" onclick="switchTab('pyramid')">⟁ ПІРАМІДА</button>
+  <button class="tab" onclick="switchTab('ar')">◈ AR КАМЕРА</button>
+</div>
+
+<!-- ═══════════════ PYRAMID TAB ═══════════════ -->
+<div class="panel active" id="tab-pyramid">
+
+  <div class="section-title">Вибір відео</div>
+
+  <div class="upload-zone" id="uploadZone" onclick="document.getElementById('videoInput').click()">
+    <span class="upload-icon">▷</span>
+    <div class="upload-text">
+      <strong>Натисни або перетягни відео</strong><br>
+      MP4 / WebM / MOV<br>
+      <span style="font-size:10px; opacity:.5">Рекомендовано: об'єкт на чорному фоні</span>
+    </div>
+  </div>
+  <input type="file" id="videoInput" accept="video/*">
+
+  <div class="controls" id="pyramidControls" style="display:none">
+
+    <div class="section-title" style="margin-top:8px">Налаштування</div>
+
+    <div class="ctrl-row">
+      <span class="ctrl-label">Яскравість</span>
+      <input type="range" id="brightness" min="0.3" max="2.5" step="0.05" value="1.3" oninput="updateFilter()">
+      <span class="ctrl-val" id="brightnessVal">1.3</span>
+    </div>
+
+    <div class="ctrl-row">
+      <span class="ctrl-label">Контраст</span>
+      <input type="range" id="contrast" min="0.5" max="3" step="0.05" value="1.5" oninput="updateFilter()">
+      <span class="ctrl-val" id="contrastVal">1.5</span>
+    </div>
+
+    <div class="ctrl-row">
+      <span class="ctrl-label">Масштаб</span>
+      <input type="range" id="vidScale" min="0.2" max="1" step="0.01" value="0.7" oninput="updateScale()">
+      <span class="ctrl-val" id="scaleVal">0.7</span>
+    </div>
+
+    <div class="progress-bar">
+      <div class="progress-fill" id="vidProgress"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn btn-primary" id="playBtn" onclick="togglePlay()">▶ PLAY</button>
+      <button class="btn" onclick="showFullscreen()">⛶ ПОВНИЙ ЕКРАН</button>
+      <button class="btn" onclick="resetVideo()">↺ СКИНУТИ</button>
+    </div>
+  </div>
+
+  <canvas id="pyramidCanvas"></canvas>
+
+  <div class="tip-box">
+    <b>ЯК ЗРОБИТИ ПІРАМІДКУ:</b><br>
+    1. Виріж 4 рівні трапеції з прозорої плівки/CD-кейса<br>
+    2. Склей їх у пірамідку (вузькою стороною вниз)<br>
+    3. Поклади пірамідку на телефон екраном догори<br>
+    4. Запусти відео у повноекранному режимі<br>
+    5. Дивися в грані пірамідки — ти побачиш «голограму»!
+  </div>
+</div>
+
+<!-- ═══════════════ AR TAB ═══════════════ -->
+<div class="panel" id="tab-ar">
+
+  <div class="ar-info">
+    <strong>AR ГОЛОГРАМА</strong> — через камеру ти бачиш реальний світ, а поверх нього малюється 3D-ефект у реальному часі. Виглядає як голограма «в просторі».<br>
+    <span style="opacity:.6">Потрібен дозвіл на камеру.</span>
+  </div>
+
+  <div class="section-title">Ефект</div>
+
+  <div class="effect-grid">
+    <button class="effect-btn active" onclick="setEffect('sphere')" id="eff-sphere">◎ СФЕРА</button>
+    <button class="effect-btn" onclick="setEffect('cube')" id="eff-cube">□ КУБ</button>
+    <button class="effect-btn" onclick="setEffect('dna')" id="eff-dna">⌇ ДНК</button>
+    <button class="effect-btn" onclick="setEffect('rings')" id="eff-rings">◉ КІЛЬЦЯ</button>
+    <button class="effect-btn" onclick="setEffect('grid')" id="eff-grid">⊞ GRID</button>
+    <button class="effect-btn" onclick="setEffect('particles')" id="eff-particles">✦ ЧАСТКИ</button>
+  </div>
+
+  <div class="controls">
+    <div class="ctrl-row">
+      <span class="ctrl-label">Розмір</span>
+      <input type="range" id="arSize" min="40" max="200" value="100" oninput="document.getElementById('arSizeVal').textContent=this.value">
+      <span class="ctrl-val" id="arSizeVal">100</span>
+    </div>
+    <div class="ctrl-row">
+      <span class="ctrl-label">Швидкість</span>
+      <input type="range" id="arSpeed" min="0.2" max="5" step="0.1" value="1.5" oninput="document.getElementById('arSpeedVal').textContent=this.value">
+      <span class="ctrl-val" id="arSpeedVal">1.5</span>
+    </div>
+    <div class="ctrl-row">
+      <span class="ctrl-label">Колір</span>
+      <input type="range" id="arHue" min="0" max="360" value="185" oninput="document.getElementById('arHueVal').textContent=this.value+'°'">
+      <span class="ctrl-val" id="arHueVal">185°</span>
+    </div>
+  </div>
+
+  <div class="btn-row" style="margin-top:16px">
+    <button class="btn btn-primary" onclick="startAR()">◈ ЗАПУСТИТИ AR</button>
+  </div>
+
+  <div class="ar-container" id="arContainer">
+    <video id="arVideo" autoplay playsinline muted></video>
+    <canvas id="arCanvas"></canvas>
+  </div>
+
+  <div class="tip-box" style="margin-top:16px">
+    <b>ПОРАДА:</b> Наведи телефон на стіл або підлогу — голограма з'явиться ніби «стоїть» в просторі. Найкраще виглядає у напівтемряві!
+  </div>
+</div>
+
+<!-- ═══════════════ FULLSCREEN PYRAMID ═══════════════ -->
+<div id="fullscreenOverlay">
+  <canvas id="fsCanvas"></canvas>
+  <div class="fs-tip">ПОКЛАДИ ПІРАМІДКУ НА ЕКРАН • НАТИСНИ ДЛЯ ЗАКРИТТЯ</div>
+  <button class="fs-close" onclick="closeFullscreen()">✕ ЗАКРИТИ</button>
+</div>
+
+<!-- ═══════════════ AR FULLSCREEN ═══════════════ -->
+<div id="arFullscreen">
+  <video id="arFsVideo" autoplay playsinline muted></video>
+  <canvas id="arFsCanvas"></canvas>
+  <div class="corner-decor tl"></div>
+  <div class="corner-decor tr"></div>
+  <div class="corner-decor bl"></div>
+  <div class="corner-decor br"></div>
+  <div class="ar-label">◈ AR HOLOGRAM</div>
+  <button class="ar-fs-close" onclick="closeARFullscreen()">✕</button>
+</div>
+
+<script>
+// ═══════════════════════════════════════
+//  TABS
+// ═══════════════════════════════════════
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach((t,i) => t.classList.toggle('active', ['pyramid','ar'][i]===name));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById('tab-'+name).classList.add('active');
+}
+
+// ═══════════════════════════════════════
+//  PYRAMID MODE
+// ═══════════════════════════════════════
+let pyramidVideo = null;
+let pyramidAnim = null;
+let filterBrightness = 1.3, filterContrast = 1.5, vidScale = 0.7;
+let isPlaying = false;
+
+const videoInput = document.getElementById('videoInput');
+videoInput.addEventListener('change', e => loadVideo(e.target.files[0]));
+
+// Drag & drop
+const zone = document.getElementById('uploadZone');
+zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag'); });
+zone.addEventListener('dragleave', () => zone.classList.remove('drag'));
+zone.addEventListener('drop', e => { e.preventDefault(); zone.classList.remove('drag'); loadVideo(e.dataTransfer.files[0]); });
+
+function loadVideo(file) {
+  if (!file || !file.type.startsWith('video/')) return;
+  if (pyramidVideo) { pyramidVideo.pause(); pyramidVideo.src=''; }
+  pyramidVideo = document.createElement('video');
+  pyramidVideo.src = URL.createObjectURL(file);
+  pyramidVideo.loop = true;
+  pyramidVideo.muted = true;
+  pyramidVideo.playsInline = true;
+  pyramidVideo.crossOrigin = 'anonymous';
+  pyramidVideo.addEventListener('loadedmetadata', () => {
+    document.getElementById('pyramidControls').style.display = 'flex';
+    document.getElementById('pyramidControls').style.flexDirection = 'column';
+    startPyramidRender();
+  });
+  pyramidVideo.load();
+}
+
+function togglePlay() {
+  if (!pyramidVideo) return;
+  if (isPlaying) { pyramidVideo.pause(); isPlaying=false; document.getElementById('playBtn').textContent='▶ PLAY'; }
+  else { pyramidVideo.play(); isPlaying=true; document.getElementById('playBtn').textContent='⏸ PAUSE'; }
+}
+
+function resetVideo() {
+  if (!pyramidVideo) return;
+  pyramidVideo.currentTime = 0;
+}
+
+function updateFilter() {
+  filterBrightness = parseFloat(document.getElementById('brightness').value);
+  filterContrast   = parseFloat(document.getElementById('contrast').value);
+  document.getElementById('brightnessVal').textContent = filterBrightness.toFixed(2);
+  document.getElementById('contrastVal').textContent   = filterContrast.toFixed(2);
+}
+
+function updateScale() {
+  vidScale = parseFloat(document.getElementById('vidScale').value);
+  document.getElementById('scaleVal').textContent = vidScale.toFixed(2);
+}
+
+function startPyramidRender() {
+  const canvas = document.getElementById('pyramidCanvas');
+  canvas.style.display = 'block';
+  const size = Math.min(window.innerWidth - 48, 400);
+  canvas.width = size; canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (pyramidAnim) cancelAnimationFrame(pyramidAnim);
+  drawPyramid(ctx, canvas, false);
+}
+
+function drawPyramid(ctx, canvas, isFull) {
+  function frame() {
+    const S = canvas.width;
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, S, S);
+    ctx.filter = `brightness(${filterBrightness}) contrast(${filterContrast})`;
+
+    if (!pyramidVideo || pyramidVideo.readyState < 2) {
+      if (isFull) requestAnimationFrame(frame);
+      else pyramidAnim = requestAnimationFrame(frame);
+      return;
+    }
+
+    // Update progress
+    if (!isFull && pyramidVideo.duration) {
+      document.getElementById('vidProgress').style.width = (pyramidVideo.currentTime / pyramidVideo.duration * 100) + '%';
+    }
+
+    const vw = pyramidVideo.videoWidth, vh = pyramidVideo.videoHeight;
+    const region = S * 0.38 * vidScale; // size of each quadrant video
+    const hw = region, hh = region * (vh / vw);
+    const c = S / 2;
+
+    // ── TOP (normal)
+    ctx.save();
+    ctx.translate(c, c * 0.28);
+    drawCenteredVideo(ctx, hw, hh, 1, 0);
+    ctx.restore();
+
+    // ── BOTTOM (flipped Y)
+    ctx.save();
+    ctx.translate(c, S - c * 0.28);
+    drawCenteredVideo(ctx, hw, hh, 1, -1);
+    ctx.restore();
+
+    // ── LEFT (rotated 90° CW + mirror)
+    ctx.save();
+    ctx.translate(c * 0.28, c);
+    ctx.rotate(-Math.PI / 2);
+    drawCenteredVideo(ctx, hw, hh, 1, -1);
+    ctx.restore();
+
+    // ── RIGHT (rotated 90° CCW)
+    ctx.save();
+    ctx.translate(S - c * 0.28, c);
+    ctx.rotate(Math.PI / 2);
+    drawCenteredVideo(ctx, hw, hh, 1, 0);
+    ctx.restore();
+
+    ctx.filter = 'none';
+
+    // Center cross guide
+    ctx.strokeStyle = 'rgba(0,245,255,0.15)';
+    ctx.lineWidth = 0.5;
+    ctx.beginPath(); ctx.moveTo(c, 0); ctx.lineTo(c, S);
+    ctx.moveTo(0, c); ctx.lineTo(S, c); ctx.stroke();
+
+    if (isFull) requestAnimationFrame(frame);
+    else pyramidAnim = requestAnimationFrame(frame);
+  }
+  frame();
+}
+
+function drawCenteredVideo(ctx, w, h, scaleX, flipY) {
+  if (flipY === -1) {
+    ctx.scale(scaleX, -1);
+    ctx.drawImage(pyramidVideo, -w/2, -h/2, w, h);
+    ctx.scale(scaleX, -1);
+  } else {
+    ctx.scale(scaleX, 1);
+    ctx.drawImage(pyramidVideo, -w/2, -h/2, w, h);
+  }
+}
+
+// Fullscreen
+function showFullscreen() {
+  if (!pyramidVideo) return;
+  const overlay = document.getElementById('fullscreenOverlay');
+  overlay.classList.add('show');
+  const canvas = document.getElementById('fsCanvas');
+  const S = Math.min(window.innerWidth, window.innerHeight);
+  canvas.width = S; canvas.height = S;
+  const ctx = canvas.getContext('2d');
+  drawPyramid(ctx, canvas, true);
+  // Auto max brightness hint
+  try { screen.orientation.lock('portrait').catch(()=>{}); } catch(e){}
+}
+
+function closeFullscreen() {
+  document.getElementById('fullscreenOverlay').classList.remove('show');
+}
+
+document.getElementById('fullscreenOverlay').addEventListener('click', function(e) {
+  if (e.target === this || e.target.id === 'fsCanvas') closeFullscreen();
+});
+
+// ═══════════════════════════════════════
+//  AR MODE
+// ═══════════════════════════════════════
+let currentEffect = 'sphere';
+let arStream = null;
+let arAnimId = null;
+let arT = 0;
+
+function setEffect(name) {
+  currentEffect = name;
+  document.querySelectorAll('.effect-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('eff-'+name).classList.add('active');
+}
+
+async function startAR() {
+  try {
+    if (arStream) { arStream.getTracks().forEach(t=>t.stop()); }
+    arStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false });
+    const video = document.getElementById('arVideo');
+    video.srcObject = arStream;
+    video.style.display = 'block';
+    const cont = document.getElementById('arContainer');
+    cont.classList.add('show');
+
+    video.addEventListener('loadedmetadata', () => {
+      const canvas = document.getElementById('arCanvas');
+      canvas.width = video.videoWidth || 640;
+      canvas.height = video.videoHeight || 480;
+      canvas.style.width = '100%';
+      canvas.style.height = '100%';
+      canvas.style.top = '0'; canvas.style.left = '0';
+      if (arAnimId) cancelAnimationFrame(arAnimId);
+      runAR(canvas, video.videoWidth || 640, video.videoHeight || 480, false);
+
+      // Auto switch to fullscreen AR
+      setTimeout(() => openARFullscreen(), 300);
+    });
+  } catch(e) {
+    alert('Не вдалося отримати доступ до камери: ' + e.message);
+  }
+}
+
+function openARFullscreen() {
+  if (!arStream) return;
+  const fsDiv = document.getElementById('arFullscreen');
+  fsDiv.classList.add('show');
+  const fsVideo = document.getElementById('arFsVideo');
+  fsVideo.srcObject = arStream;
+  const fsCanvas = document.getElementById('arFsCanvas');
+  fsCanvas.width = window.innerWidth;
+  fsCanvas.height = window.innerHeight;
+  if (arAnimId) cancelAnimationFrame(arAnimId);
+  runAR(fsCanvas, window.innerWidth, window.innerHeight, true);
+}
+
+function closeARFullscreen() {
+  document.getElementById('arFullscreen').classList.remove('show');
+  if (arAnimId) { cancelAnimationFrame(arAnimId); arAnimId=null; }
+  if (arStream) { arStream.getTracks().forEach(t=>t.stop()); arStream=null; }
+}
+
+function runAR(canvas, W, H, isFs) {
+  const ctx = canvas.getContext('2d');
+  const cx = W/2, cy = H/2;
+
+  function frame() {
+    arT += 0.016 * parseFloat(document.getElementById('arSpeed').value);
+    const size = parseInt(document.getElementById('arSize').value);
+    const hue = parseInt(document.getElementById('arHue').value);
+
+    ctx.clearRect(0,0,W,H);
+
+    switch(currentEffect) {
+      case 'sphere': drawSphere(ctx, cx, cy, size, hue); break;
+      case 'cube':   drawCube(ctx, cx, cy, size, hue); break;
+      case 'dna':    drawDNA(ctx, cx, cy, size, hue); break;
+      case 'rings':  drawRings(ctx, cx, cy, size, hue); break;
+      case 'grid':   drawGrid(ctx, cx, cy, size, hue, W, H); break;
+      case 'particles': drawParticles(ctx, cx, cy, size, hue); break;
+    }
+
+    arAnimId = requestAnimationFrame(frame);
+  }
+  frame();
+}
+
+function hslColor(hue, sat, l, a) {
+  return `hsla(${hue},${sat}%,${l}%,${a})`;
+}
+
+// ── Sphere wireframe
+function drawSphere(ctx, cx, cy, R, hue) {
+  const lat = 8, lon = 12;
+  ctx.lineWidth = 1.2;
+  for (let i=0; i<=lat; i++) {
+    const theta = (i/lat) * Math.PI;
+    ctx.beginPath();
+    ctx.strokeStyle = hslColor(hue, 100, 60, 0.55 * Math.sin(theta));
+    for (let j=0; j<=lon; j++) {
+      const phi = (j/lon)*2*Math.PI + arT;
+      const x = cx + R * Math.sin(theta)*Math.cos(phi);
+      const y = cy + R * Math.sin(theta)*Math.sin(phi)*0.4 - R*Math.cos(theta)*0.7;
+      j===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+  }
+  for (let j=0; j<lon; j++) {
+    const phi = (j/lon)*2*Math.PI + arT;
+    ctx.beginPath();
+    ctx.strokeStyle = hslColor(hue, 100, 70, 0.4);
+    for (let i=0; i<=lat; i++) {
+      const theta = (i/lat)*Math.PI;
+      const x = cx + R*Math.sin(theta)*Math.cos(phi);
+      const y = cy + R*Math.sin(theta)*Math.sin(phi)*0.4 - R*Math.cos(theta)*0.7;
+      i===0 ? ctx.moveTo(x,y) : ctx.lineTo(x,y);
+    }
+    ctx.stroke();
+  }
+  // glow center
+  const g = ctx.createRadialGradient(cx,cy-R*0.3,0,cx,cy-R*0.3,R*0.4);
+  g.addColorStop(0, hslColor(hue,100,80,0.3));
+  g.addColorStop(1, 'transparent');
+  ctx.fillStyle = g; ctx.beginPath(); ctx.arc(cx,cy-R*0.3,R*0.4,0,Math.PI*2); ctx.fill();
+}
+
+// ── Cube 3D wireframe
+function drawCube(ctx, cx, cy, S, hue) {
+  const s = S * 0.6;
+  const rx = arT * 0.7, ry = arT;
+  function rot([x,y,z]) {
+    let [nx,nz] = [x*Math.cos(ry)-z*Math.sin(ry), x*Math.sin(ry)+z*Math.cos(ry)];
+    let [ny,nz2] = [y*Math.cos(rx)-nz*Math.sin(rx), y*Math.sin(rx)+nz*Math.cos(rx)];
+    return [cx+nx, cy-ny*0.5+nz2*0.2];
+  }
+  const v = [[-s,-s,-s],[s,-s,-s],[s,s,-s],[-s,s,-s],[-s,-s,s],[s,-s,s],[s,s,s],[-s,s,s]];
+  const edges = [[0,1],[1,2],[2,3],[3,0],[4,5],[5,6],[6,7],[7,4],[0,4],[1,5],[2,6],[3,7]];
+  ctx.strokeStyle = hslColor(hue,100,65,0.8);
+  ctx.lineWidth = 1.5;
+  ctx.shadowColor = hslColor(hue,100,65,1);
+  ctx.shadowBlur = 8;
+  edges.forEach(([a,b]) => {
+    const [x1,y1]=rot(v[a]), [x2,y2]=rot(v[b]);
+    ctx.beginPath(); ctx.moveTo(x1,y1); ctx.lineTo(x2,y2); ctx.stroke();
+  });
+  ctx.shadowBlur = 0;
+}
+
+// ── DNA helix
+function drawDNA(ctx, cx, cy, R, hue) {
+  const steps = 40;
+  ctx.lineWidth = 1.5;
+  for (let i=0; i<steps; i++) {
+    const t = i/steps;
+    const angle = t * Math.PI * 4 + arT;
+    const x1 = cx + Math.cos(angle)*R*0.5;
+    const x2 = cx - Math.cos(angle)*R*0.5;
+    const y = cy - R + t*R*2;
+    const alpha = 0.3 + 0.7*Math.abs(Math.cos(angle));
+    // strands
+    if (i>0) {
+      const pp = (i-1)/steps, pa = pp*Math.PI*4+arT;
+      ctx.strokeStyle = hslColor(hue,100,65,alpha);
+      ctx.beginPath(); ctx.moveTo(cx+Math.cos(pa)*R*0.5, cy-R+pp*R*2); ctx.lineTo(x1,y); ctx.stroke();
+      ctx.strokeStyle = hslColor((hue+160)%360,100,65,alpha);
+      ctx.beginPath(); ctx.moveTo(cx-Math.cos(pa)*R*0.5, cy-R+pp*R*2); ctx.lineTo(x2,y); ctx.stroke();
+    }
+    // rungs
+    if (i%4===0) {
+      ctx.strokeStyle = hslColor(hue,80,80,0.5);
+      ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(x1,y); ctx.lineTo(x2,y); ctx.stroke(); ctx.lineWidth=1.5;
+    }
+    ctx.fillStyle = hslColor(hue,100,80,alpha);
+    ctx.beginPath(); ctx.arc(x1,y,2.5,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = hslColor((hue+160)%360,100,80,alpha);
+    ctx.beginPath(); ctx.arc(x2,y,2.5,0,Math.PI*2); ctx.fill();
+  }
+}
+
+// ── Rings
+function drawRings(ctx, cx, cy, R, hue) {
+  for (let i=0; i<5; i++) {
+    const a = arT + i * Math.PI/5 * (i%2?1:-1);
+    const rx = R*(0.4+i*0.15), ry = rx*0.3;
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(a);
+    ctx.strokeStyle = hslColor((hue+i*30)%360, 100, 65, 0.7-i*0.08);
+    ctx.lineWidth = 2-i*0.2;
+    ctx.shadowColor = hslColor(hue,100,65,0.8);
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.ellipse(0,0,rx,ry,0,0,Math.PI*2);
+    ctx.stroke();
+    ctx.restore();
+  }
+}
+
+// ── Grid floor
+function drawGrid(ctx, cx, cy, R, hue, W, H) {
+  const rows=10, cols=20;
+  const gw=W, gh=R*1.5;
+  const gx=cx-gw/2, gy=cy;
+  const vp = {x:cx, y:cy-R*0.5};
+  ctx.strokeStyle = hslColor(hue,100,55,0.6);
+  ctx.lineWidth=1;
+  ctx.shadowColor=hslColor(hue,100,55,1);
+  ctx.shadowBlur=4;
+  for(let i=0;i<=cols;i++){
+    const fx=gx+i*(gw/cols);
+    ctx.beginPath();
+    // vanish
+    const t=i/cols;
+    ctx.moveTo(vp.x+(fx-vp.x)*0.05, vp.y);
+    ctx.lineTo(fx, gy+gh);
+    ctx.globalAlpha=0.5;
+    ctx.stroke();
+    ctx.globalAlpha=1;
+  }
+  for(let j=0;j<=rows;j++){
+    const fy=gy+j*(gh/rows);
+    const p=(fy-gy)/gh;
+    ctx.beginPath();
+    ctx.moveTo(vp.x+(gx-vp.x)*p,     vp.y+(fy-vp.y)*p);
+    ctx.lineTo(vp.x+(gx+gw-vp.x)*p,  vp.y+(fy-vp.y)*p);
+    ctx.globalAlpha=0.2+p*0.5;
+    ctx.stroke();
+    ctx.globalAlpha=1;
+  }
+  ctx.shadowBlur=0;
+  // floating object above grid
+  const fh = -Math.sin(arT)*R*0.3 - R*0.5;
+  drawRings(ctx, cx, cy+fh, R*0.5, hue);
+}
+
+// ── Particles
+const particles = Array.from({length:60}, (_,i) => ({
+  a: Math.random()*Math.PI*2,
+  r: 20+Math.random()*80,
+  z: Math.random()*2-1,
+  speed: (Math.random()-0.5)*0.04,
+  size: 1+Math.random()*3,
+}));
+
+function drawParticles(ctx, cx, cy, R, hue) {
+  particles.forEach(p => {
+    p.a += p.speed * parseFloat(document.getElementById('arSpeed').value);
+    const scale = R/100;
+    const x = cx + Math.cos(p.a) * p.r * scale;
+    const y = cy + Math.sin(p.a) * p.r * scale * 0.4 + p.z * R * 0.3;
+    const alpha = 0.4 + 0.6 * (1-Math.abs(p.z));
+    ctx.fillStyle = hslColor(hue, 100, 70+p.z*20, alpha);
+    ctx.shadowColor = hslColor(hue,100,80,0.6);
+    ctx.shadowBlur = 6;
+    ctx.beginPath();
+    ctx.arc(x, y, p.size, 0, Math.PI*2);
+    ctx.fill();
+  });
+  ctx.shadowBlur=0;
+  // draw connecting lines
+  ctx.strokeStyle = hslColor(hue,100,60,0.08);
+  ctx.lineWidth=0.5;
+  for(let i=0;i<particles.length;i++){
+    for(let j=i+1;j<particles.length;j++){
+      const p1=particles[i], p2=particles[j];
+      const scale=R/100;
+      const dx=(Math.cos(p1.a)*p1.r-Math.cos(p2.a)*p2.r)*scale;
+      const dy=(Math.sin(p1.a)*p1.r-Math.sin(p2.a)*p2.r)*scale*0.4;
+      if(dx*dx+dy*dy<(R*0.6)*(R*0.6)){
+        ctx.beginPath();
+        ctx.moveTo(cx+Math.cos(p1.a)*p1.r*scale, cy+Math.sin(p1.a)*p1.r*scale*0.4+p1.z*R*0.3);
+        ctx.lineTo(cx+Math.cos(p2.a)*p2.r*scale, cy+Math.sin(p2.a)*p2.r*scale*0.4+p2.z*R*0.3);
+        ctx.stroke();
+      }
+    }
+  }
+}
+</script>
+</body>
+</html>
